@@ -14,74 +14,67 @@
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet" integrity="sha384-QWTKZyjpPEjISv5WaRU9OFeRpok6YctnYmDr5pNlyT2bRjXh0JMhjY6hW+ALEwIH" crossorigin="anonymous">
     <link rel="stylesheet" href="style/style.css">
 
+    <!-- <script src="js/app.js"></script> -->
 </head>
 
 <body>
-
     <?php 
-    // Database connection parameters
-    $servername = "localhost";
-    $dbusername = "root";
-    $dbpassword = "";
-    $database = "userlogins";
+        include("connection.php");
 
-    // Attempt to establish a connection to MySQL server
-    $conn = mysqli_connect($servername, $dbusername, $dbpassword, $database);
-
-    function test_input($data) {
-        $data = trim($data);
-        $data = stripslashes($data);
-        $data = htmlspecialchars($data);
-        return $data;
-    }
-
-    $firstNameErr = $lastNameErr = $emailErr = "";
-    $firstName = $lastName = $email = $gender = $comment = $website = "";
-
-    if ($_SERVER['REQUEST_METHOD'] == 'POST') {
-        $firstName = test_input($_POST['firstName']);
-        $lastName = test_input($_POST['lastName']);
-        $email = test_input($_POST['email']);
-        $password = test_input($_POST['password']); // Assuming password exists
-
-        // Validate required fields:
-        if (empty($firstName)) {
-            $firstNameErr = "First name is required";
-        } elseif (!preg_match("/^[a-zA-Z-' ]*$/", $firstName)) {
-            $firstNameErr = "Only letters and white space allowed for first name";
+        function test_input($data) {
+            $data = trim($data);
+            $data = stripslashes($data);
+            $data = htmlspecialchars($data);
+            return $data;
         }
 
-        if (empty($lastName)) {
-            $lastNameErr = "Last name is required";
-        } elseif (!preg_match("/^[a-zA-Z-' ]*$/", $lastName)) {
-            $lastNameErr = "Only letters and white space allowed for last name";
+        $firstNameErr = $lastNameErr = $emailErr = $passErr = "";
+        $firstName = $lastName = $email = $password = $confpassword = "";
+
+        if ($_SERVER['REQUEST_METHOD'] == 'POST') {
+            $firstName = test_input($_POST['firstName']);
+            $lastName = test_input($_POST['lastName']);
+            $email = test_input($_POST['email']);
+            $password = test_input($_POST['password']);
+            $confpassword = test_input($_POST['confpassword']);
+
+            // Validate required fields:
+            if (empty($firstName)) {
+                $firstNameErr = "First name is required";
+            } elseif (!preg_match("/^[a-zA-Z-' ]*$/", $firstName)) {
+                $firstNameErr = "Only letters and white space allowed for first name";
+            }
+
+            if (empty($lastName)) {
+                $lastNameErr = "Last name is required";
+            } elseif (!preg_match("/^[a-zA-Z-' ]*$/", $lastName)) {
+                $lastNameErr = "Only letters and white space allowed for last name";
+            }
+
+            if (empty($email)) {
+                $emailErr = "Email is required";
+            } elseif (!filter_var($email, FILTER_VALIDATE_EMAIL)) {
+                $emailErr = "Invalid email format";
+            }
+
+            // Validate password and confirm password
+            if (empty($password)) {
+                $passErr = "Password is required";
+            } elseif ($password !== $confpassword) {
+                $passErr = "Passwords do not match";
+            }
+
+            if (empty($firstNameErr) && empty($lastNameErr) && empty($emailErr) && empty($passErr)) {
+                // Hash the password before storing it in the database
+                $hashed_password = password_hash($password, PASSWORD_DEFAULT);
+                $insertQuery = "INSERT INTO `logininfo` (`firstName`, `lastName`, `email`, `password`, `dt`) VALUES ('$firstName', '$lastName', '$email', '$hashed_password', current_timestamp());";
+                $result = mysqli_query($conn, $insertQuery);
+
+                echo '<div class="alert alert-success" role="alert">Data inserted successfully!</div>';
+            } 
         }
-
-        if (empty($email)) {
-            $emailErr = "Email is required";
-        } elseif (!filter_var($email, FILTER_VALIDATE_EMAIL)) {
-            $emailErr = "Invalid email format";
-        }
-
-        if (empty($firstNameErr) && empty($lastNameErr) && empty($emailErr)) {
-            $insertQuery = "INSERT INTO `logininfo` (`firstName`, `lastName`, `email`, `password`, `dt`) VALUES ('$firstName', '$lastName', '$email', '$password', current_timestamp());";
-            $result = mysqli_query($conn, $insertQuery);
-
-            echo '<div class="alert alert-success" role="alert">Data inserted successfully!</div>';
-        } 
-        // else {
-        //     // Display user-friendly error messages:
-        //     echo '<div class="alert alert-danger" role="alert">';
-        //     echo $firstNameErr . "<br>";
-        //     echo $lastNameErr . "<br>";
-        //     echo $emailErr . "<br>";
-        //     // Add error messages for other validation failures if needed
-        //     echo '</div>';
-        // }
-    } elseif ($_SERVER['REQUEST_METHOD'] == 'POST' && empty($firstName) && empty($lastName) && empty($email) && empty($password)) {
-        echo '<div class="alert alert-danger" role="alert">Form is empty!</div>';
-    }
     ?>
+
 
     <div class="container">
         <div class="title">
@@ -121,8 +114,13 @@
                 </div>
 
                 <div class="form-row conf-password">
-                    <input type="password" id="conf-password" name="confirm password" placeholder="Confirm Password" onkeyup="checkPassword()">
-                    <span class="message">Passwords don't match</span>
+                    <input type="password" id="conf-password" name="confpassword" placeholder="Confirm Password" onkeyup="checkPassword()">
+                    <!-- <span class="message">Passwords don't match</span> -->
+                    <?php
+                        if(!empty($passErr)){
+                            echo '<span class="error">' . $passErr . '</span>';
+                        }
+                    ?>
                 </div>
             </div>
 
